@@ -2,46 +2,41 @@ package com.polotechnologies.dagger2practice.ui.auth
 
 import android.annotation.SuppressLint
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.LiveDataReactiveStreams
+import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.ViewModel
 import com.polotechnologies.dagger2practice.dataModels.User
 import com.polotechnologies.dagger2practice.network.auth.AuthApi
-import io.reactivex.Observable
-import io.reactivex.Observer
-import io.reactivex.Scheduler
-import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import javax.inject.Inject
 
 @SuppressLint("CheckResult")
 class AuthViewModel
-@Inject constructor(authApi: AuthApi) : ViewModel() {
+@Inject constructor(private val authApi: AuthApi) : ViewModel() {
+
+    private val authUser = MediatorLiveData<User>()
 
     init {
-        Log.d(TAG, "Init: ViewModel Injected..... ")
-        authApi.getUser(2)
-            .toObservable()
-            .subscribeOn(Schedulers.io())
-            .subscribe {user->
-
-                Log.d(TAG, "onNext: UserEmail: ${user.email}")
-                object : Observer<User> {
-                    override fun onComplete() {
-                    }
-
-                    override fun onSubscribe(d: Disposable) {
-                    }
-
-                    override fun onNext(user: User) {
-                        Log.d(TAG, "onNext: UserEmail: ${user.email}")
-                    }
-
-                    override fun onError(e: Throwable) {
-                        Log.d(TAG, "Error: ${e.localizedMessage}")
-                    }
-
-                }
-            }
+        Log.d(TAG, "Init:ViewModel is Working ")
     }
+
+    fun authenticateWithId(id : Int) {
+        val source : LiveData<User> =  LiveDataReactiveStreams.fromPublisher(
+            authApi.getUser(id)
+                .subscribeOn(Schedulers.io())
+        )
+
+        authUser.addSource(source) { user->
+            authUser.value = user
+            authUser.removeSource(source)
+        }
+    }
+
+    fun observeUser()  :LiveData<User>{
+        return authUser
+    }
+
 
     companion object {
         private const val TAG = "AuthViewModel"
